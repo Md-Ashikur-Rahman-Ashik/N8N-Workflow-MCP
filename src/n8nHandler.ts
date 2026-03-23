@@ -1,36 +1,59 @@
 import { WORKFLOW_MAP } from './workflowRegistry.js';
 
-export async function handleN8nIntent(userIntent: string, payload: any) {
-  // 1. Normalize the intent (Plain English to internal ID)
-  const target = WORKFLOW_MAP.find(w => 
-    userIntent.toLowerCase().includes(w.intent)
+interface Workflow {
+  intent: string;
+  workflowId: string;
+  description: string;
+  requiredFields: string[];
+}
+
+// FIX: Update the function to accept THREE arguments: intent, payload, and config
+export async function handleN8nIntent(
+  userIntent: string, 
+  payload: Record<string, any>, 
+  config: { apiKey: string; baseUrl: string } // The 3rd argument
+) {
+  
+  // 1. Logic Check: Find the intent
+  const target = (WORKFLOW_MAP as Workflow[]).find((w: Workflow) =>
+    userIntent.toLowerCase().includes(w.intent.toLowerCase())
   );
 
-  // 2. Error Handling
   if (!target) {
-    throw new Error(`Intent '${userIntent}' not recognized. Please try: ${WORKFLOW_MAP.map(w => w.intent).join(', ')}`);
+    throw new Error(`Intent '${userIntent}' not recognized.`);
   }
 
-  // 3. Validation Logic (Security & Accuracy)
-  const missingFields = target.requiredFields.filter(field => !payload[field]);
+  // 2. Validation: Check for required fields
+  const missingFields = target.requiredFields.filter((f: string) => !payload[f]);
   if (missingFields.length > 0) {
-    return {
-      status: "error",
-      message: `I need more information: ${missingFields.join(', ')}`
+    return { 
+      status: "error", 
+      message: `I need more information: ${missingFields.join(", ")}` 
     };
   }
 
-  // 4. Execution (The actual n8n call)
+  // 3. Execution: Use the 'config' passed from the server session
   try {
-    const response = await fetch(`https://your-n8n-instance.com/webhook/${target.workflowId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    // Logic Verification: Ensure the URL is clean
+    const baseUrl = config.baseUrl.replace(/\/$/, '');
+    const endpoint = `${baseUrl}/webhook/${target.workflowId}`;
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "X-N8N-API-KEY": config.apiKey // Using the key from the 3rd argument
+      },
+      body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      throw new Error(`n8n responded with status: ${response.status}`);
+    }
+
     return await response.json();
-  } catch (error) {
+  } catch (error: any) {
     console.error("n8n Execution Error:", error);
-    throw new Error("Failed to trigger automation. Check n8n logs.");
+    throw new Error(`Automation failed: ${error.message}`);
   }
 }
