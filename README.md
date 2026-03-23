@@ -37,11 +37,6 @@ npm start       # Run compiled server
 └── .env.example        # Environment variables template
 ```
 
-## Tools
-
-- **hello** — Returns a greeting message
-- **echo** — Echoes back the input with a timestamp
-
 ## Testing
 
 ```bash
