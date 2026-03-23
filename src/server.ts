@@ -51,6 +51,7 @@ export class N8nMCPServer {
       ]
     }));
 
+
     this.server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
       const { name, arguments: args } = request.params;
 
