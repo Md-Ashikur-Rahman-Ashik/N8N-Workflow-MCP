@@ -7,7 +7,7 @@ build:
   command: npm run build
 
 startCommand:
-  type: http
+  type: stdio
   command: node dist/index.js
 
 configSchema:
